@@ -8,8 +8,8 @@ const options = {
 	headers: { accept: 'application/json', 'x-api-key': process.env.OPENSEA_API_KEY },
 };
 
-async function getOpenSeaOffers(slug) {
-	const url = `https://api.opensea.io/api/v2/listings/collection/${slug}/all`;
+async function getOpenSeaOffers(slug, next = null) {
+	const url = `https://api.opensea.io/api/v2/listings/collection/${slug}/all${next ? `&${next}` : ''}`;
 	const response = await fetch(url, options);
 	const data = await response.json();
 	return data;
@@ -25,23 +25,28 @@ async function main() {
 
 	const collectionSlug = args[0];
 
-	const data = await getOpenSeaOffers(collectionSlug);
-
+	let data;
+	let next = null;
 	const listingDataList = [];
-	for (const listing of data.listings) {
-		const listingData = new Listing(
-			listing.order_hash,
-			listing.protocol_data.parameters.offer[0].token,
-			listing.protocol_data.parameters.offer[0].identifierOrCriteria,
-			ethers.formatUnits(listing.price.current.value, listing.price.current.decimals),
-			listing.price.current.currency,
-			listing.protocol_data.parameters.offerer,
-			listing.protocol_data.parameters.startTime,
-			listing.protocol_data.parameters.endTime,
-		);
+	do {
+		data = await getOpenSeaOffers(collectionSlug, next);
 
-		listingDataList.push(listingData);
-	}
+		for (const listing of data.listings) {
+			const listingData = new Listing(
+				listing.order_hash,
+				listing.protocol_data.parameters.offer[0].token,
+				listing.protocol_data.parameters.offer[0].identifierOrCriteria,
+				ethers.formatUnits(listing.price.current.value, listing.price.current.decimals),
+				listing.price.current.currency,
+				listing.protocol_data.parameters.offerer,
+				listing.protocol_data.parameters.startTime,
+				listing.protocol_data.parameters.endTime,
+			);
+
+			listingDataList.push(listingData);
+		}
+		next = data.next;
+	} while (data.next);
 
 	// sort by the price high to low
 	listingDataList.sort((a, b) => b.price - a.price);
