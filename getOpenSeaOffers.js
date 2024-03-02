@@ -51,6 +51,11 @@ async function main() {
 	console.log(output);
 	console.log(`Total listings: ${listingDataList.length}`);
 
+	// check the ./output directory exists
+	if (!fs.existsSync('./output')) {
+		fs.mkdirSync('./output');
+	}
+
 	const startTime = new Date();
 	const timestamp = startTime.toISOString().split('.')[0].replaceAll(':', '-');
 	let filename = `./output/AllListings-${collectionSlug}-${timestamp}.csv`;
